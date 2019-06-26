@@ -1,18 +1,35 @@
 import time
 
 
+def tms_to_str(tm):
+    ''' tms_to_str onvertie la durée tm exprimée en ms en une chaîne exprimée
+        en nombre d'heures, minutes et secondes
+    '''
+    ret = ""
+    sec, ms = divmod(tm, 1000)
+    if sec:
+        min, sec = divmod(sec, 60)
+        if min:
+            hour, min = divmod(min, 60)
+            if hour:
+                ret += (str(hour).zfill(2) + "h")
+            ret += (str(min).zfill(2) + "min")
+    ret += str(sec).zfill(2) + "s"
+    return ret
+
+
 class Timer:
     def __init__(self, start=True):
         self.start = 0
         if start:
-            self.start = self.run()
+            self.run()
 
     def restart(self):
         self.start = time.time()
 
     def run(self):
         if not self.start:
-            return self.restart()
+            self.restart()
         else:
             raise Exception("The timer is always in running.")
 
@@ -31,17 +48,14 @@ class Timer:
             self.start = 0
         return elapsed
 
-    def __str__(self):
+    def __repr__(self):
         tm = self.elapsed()
-        ret = ""
-        sec, ms = divmod(tm, 1000)
-        if sec:
-            min, sec = divmod(sec, 60)
-            if min:
-                hour, min = divmod(min, 60)
-                if hour:
-                    ret += (str(hour) + "h")
-                ret += (str(min) + "min")
-        ret += (str(sec + ms/1000) + "s")
 
-        return ret
+        return tms_to_str(tm)
+
+if __name__ == '__main__':
+    tm = Timer()
+    for _ in range(10):
+        print(tm, end= " ", flush=True)
+        time.sleep(1)
+    print()

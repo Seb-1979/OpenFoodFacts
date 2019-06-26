@@ -1,16 +1,16 @@
 TABLES = {}
 
 TABLES['category'] = (
-    "CREATE TABLE `category` ("
+    "CREATE TABLE IF NOT EXISTS `category` ("
     "  `cat_id` int(5) UNSIGNED AUTO_INCREMENT,"
     "  `cname` varchar(100) NOT NULL,"
-    "  FULLTEXT INDEX idx_cname (`cname`)"
-    "  PRIMARY KEY (`cid`)"
+    "  FULLTEXT INDEX idx_cname (`cname`),"
+    "  PRIMARY KEY (`cat_id`)"
     ") ENGINE=InnoDB"
 )
 
 TABLES["product"] = (
-    "CREATE TABLE `product` ("
+    "CREATE TABLE IF NOT EXISTS `product` ("
     "  `prod_id` int(6) UNSIGNED AUTO_INCREMENT,"
     "  `code` int(13) UNSIGNED,"
     "  `cat_id` int(5) UNSIGNED NOT NULL,"
@@ -28,7 +28,7 @@ TABLES["product"] = (
 )
 
 TABLES["consumer"] = (
-    'CREATE TABLE `consumer` ('
+    'CREATE TABLE IF NOT EXISTS `consumer` ('
     '  `cons_id` int(6) UNSIGNED AUTO_INCREMENT,'
     '  `prod_id` int(6) UNSIGNED,'
     '  PRIMARY KEY (`cons_id`),'
