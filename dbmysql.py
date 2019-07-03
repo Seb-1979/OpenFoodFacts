@@ -26,24 +26,23 @@ class DBException(Exception):
     def __init__(self, code, msg=None):
         self.errcode = code
         if code == 0:
-            ERR_MSG[0] = msg
+            DBException.ERR_MSG[0] = msg
 
     def __repr__(self):
-        print(ERR_MSG[self.errcode])
+        return ERR_MSG[self.errcode]
 
 class DBMysql:
     def __init__(self, dbuser, dbpwd=None, dbname=None):
-        self.db_initialize = False
-        self.__dbname = dbname
-
+        self.cnx = None
         try:
             print("Connexion à l'utilisateur {} ...".format(dbuser))
             if dbpwd:
-                self.cnx = mysql.connector.connect(user=dbuse, password=dbpwd)
+                self.cnx = mysql.connector.connect(user=dbuser, password=dbpwd)
             else:
                 self.cnx = mysql.connector.connect(user=dbuser)
             self.cursor = self.cnx.cursor()
-            self.db_initialize = True
+            if dbname:
+                self.use_db(dbname)
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
                 raise DBException(DBException.ERR_USER \
@@ -51,19 +50,19 @@ class DBMysql:
             else:
                 raise DBException(DBException.ERR_UNKNOWN,
                     msg="Autre erreur MySQL:\n" + err.msg)
+        except DBException as err:
+            if err.errcode == DBException.ERR_DB_NAME:
+                raise DBException(DBException.ERR_DB_NAME)
         except:
             raise DBException(DBException.ERR_UNKNOWN,
                 msg="Erreur indéterminée.")
         print("Vous êtes connecté.")
-        if dbname:
-            self.use_db(dbname)
 
     def use_db(self, dbname):
         try:
-            cursor = self.cnx.cursor()
-            cursor.execute("USE %s;" % dbname)
-            self.cursor = cursor
-            self.__dbname = dbname
+            self.cursor = self.cnx.cursor()
+            self.cursor.execute("USE %s;" % dbname)
+            print("database name : ", self.cnx.database)
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
                 raise DBException(DBException.ERR_DB_NAME)
@@ -74,6 +73,7 @@ class DBMysql:
             self.cursor.execute(
                 "CREATE DATABASE IF NOT EXISTS {}".format(dbname) +
                 " DEFAULT CHARACTER SET 'utf8'")
+            self.cnx.database = dbname
         except mysql.connector.Error as err:
             print(err.msg)
             return False
@@ -82,59 +82,118 @@ class DBMysql:
 
     def create_table(self, tables):
         try:
-            print("Création des tables en cours ...".format(''))
+            print("Création des tables en cours ...")
             for table in tables:
                 print(table)
                 self.cursor.execute(tables[table])
             print("La création des tables est effectuée.")
         except mysql.connector.Error as err:
+            print(self.cursor.statement)
             if err.errno == errorcode.ER_PARSE_ERROR:
                 raise DBException(DBException.ERR_REQUEST)
             else:
                 raise DBException(DBException.ERR_UNKNOWN, msg=err.msg)
 
     def insert_into_table(self, name_table, datas):
-        req = "INSERT INTO {} ".format(name_table)
-        fields = []
-        values = []
-        for f, v in datas.items():
-            fields.append("{}".format(f))
-            values.append("{}".format(v))
-        req += "(" + ', '.join(fields) + ") VALUES(" + ', '.join(values) +");"
-        print(req)
-        self.cursor.execute(req)
-        self.cnx.commit()
+        print(datas)
 
-    def get_values_into_table(self, name_table, fields=('*',)):
+        req = "INSERT INTO {}.{} ".format(self.cnx.database, name_table) + \
+              "(" + ', '.join(datas.keys()) + ") "
+        fields = []
+        for f in datas.keys():
+            fields.append("%({})s".format(f))
+        req +=  "VALUES(" + ', '.join(fields) + ")"
+
+        #############################
+        print("insert query : ", req)
+        #############################
+
+        curs = self.cnx.cursor()
+        try:
+            curs.execute(req, datas)
+            self.__lastrowid = curs.lastrowid
+            self.cnx.commit()
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_PARSE_ERROR:
+
+                ################################
+                print("insert error: ", err.msg)
+                ################################
+
+                raise DBException(DBException.ERR_REQUEST)
+        finally:
+            curs.close()
+
+    @property
+    def lastrowid(self):
+        return self.__lastrowid
+
+    def select_from_table(self, name_table, fields=('*',)):
         ln = len(fields)
         if ln == 1:
             req = "SELECT " + fields[0] + "FROM " + name_table + ";"
         else:
-            req = "SELECT " + ",".join(fields) + "FROM " + name_table + ";"
-        curs = self.cnx.cursor()
-        curs.execute(req)
-        rows = curs.fetchall()
-        for values in rows:
-            yield values
-        curs.close()
-
-    def get_result_to_request(self, req):
+            req = "SELECT " + ",".join(fields) + " FROM " + name_table + ";"
         try:
-            curs = self.cnx.cursor()
+            curs = self.cnx.cursor(Dictionary=True)
             curs.execute(req)
-            for result in curs:
-                yield result
-            curs.close()
+            for values in curs:
+                yield values
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_PARSE_ERROR:
                 raise DBException(DBException.ERR_REQUEST)
+            else:
+                raise DBException(DBException.ERR_UNKNOWN, msg=err.msg)
+        finally:
+            curs.close()
+
+    def get_values(self, req):
+        curs = self.cnx.cursor(dictionary=True)
+        try:
+            curs.execute(req)
+
+            ###########################
+            print(__name__, ": ", curs)
+            ###########################
+
+            # if not curs.rowcount:
+            #
+            #     ####################################
+            #     print(__name__, ": ", curs.rowcount)
+            #     ####################################
+            #
+            #     raise StopIteration
+            #
+            # for result in rows:
+            #     yield result
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_PARSE_ERROR:
+                raise DBException(DBException.ERR_REQUEST)
+            else:
+                raise DBException(DBException.ERR_UNKNOWN, msg=err.msg)
+        except Exception as err:
+            raise DBException(DBException.ERR_UNKNOWN, msg=err.msg)
+        else:
+            print("curs: ", type(curs), ", ", curs)
+            if not curs.rowcount:
+                print("Aucun résultat")
+                return []
+            print("lecture des résultats")
+
+            rows = curs.fetchall()
+
+            ###########################
+            print(__name__, ": ", rows)
+            ###########################
+
+            return rows
+        finally:
+            curs.close()
 
     def __del__(self):
-        try:
+        if self.cnx and self.cnx.is_connected():
             self.cnx.close()
             print("\n>>>Base de données fermée.")
-        except:
-            pass
 
 
 def create_user(dbuser, dbpwd=None):
@@ -177,21 +236,51 @@ def create_user(dbuser, dbpwd=None):
 
 if __name__ == '__main__':
     user = "Jack"
-    if(not create_user(user)):
-        exit()
     db = DBMysql(user)
     dbname = "db_jack"
-    if db.create_database(dbname):
-        db.use_db(dbname)
-        table_jack = {}
-        table_jack['jack'] = (
-            "CREATE TABLE IF NOT EXISTS `jack` ("
-            "  `id` int(5) UNSIGNED AUTO_INCREMENT,"
-            "  `age` int(3) UNSIGNED NOT NULL,"
-            "  PRIMARY KEY (`id`)"
-            ") ENGINE=InnoDB"
-        )
-        db.create_table(table_jack)
-        db.insert_into_table("jack", {'age':12})
-        for v in db.get_values_into_table("jack"):
-            print(v)
+    if not db.create_database(dbname):
+        raise Exception("Impossible d'ouvrir la bdd db_jack")
+
+    db.use_db(dbname)
+    table_jack = {}
+    table_jack['group'] = (
+        "CREATE TABLE IF NOT EXISTS `group` ("
+        "  `id` int(3) UNSIGNED AUTO_INCREMENT,"
+        "  `name` varchar(20) NOT NULL,"
+        "  PRIMARY KEY (`id`)"
+        ") ENGINE=InnoDB"
+    )
+    table_jack['user'] = (
+        "CREATE TABLE IF NOT EXISTS `user` ("
+        "  `id` int(5) UNSIGNED AUTO_INCREMENT,"
+        "  `gid` int(3) UNSIGNED NOT NULL,"
+        "  `name` varchar(20) NOT NULL,"
+        "  PRIMARY KEY (`id`),"
+        "  CONSTRAINT `fk_gid` FOREIGN KEY (`gid`)"
+        "    REFERENCES `group` (`id`)"
+        ") ENGINE=InnoDB"
+    )
+    db.create_table(table_jack)
+
+    group_values = [{"name":"private"}, {"name":"public"}]
+    for gv in group_values:
+        db.insert_into_table("group", gv)
+    user_values = [
+        {"gname":"public", "name":"Jack"},
+        {"gname":"private", "name":"Bob"},
+        {"gname":"friend", "name":"Will"}
+    ]
+    req = "SELECT id FROM db_jack.group WHERE name='{}'"
+    for uv in user_values:
+        rq = req.format(uv["gname"])
+        id = -1
+        result = db.get_values(rq)
+        try:
+            id = next(result)['id']
+        except StopIteration:
+            gv = {"name":uv["gname"]}
+            db.insert_into_table("group", gv)
+            id = db.lastrowid
+        uv['gid'] = id
+        del uv["gname"]
+        db.insert_into_table("user", uv)

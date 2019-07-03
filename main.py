@@ -11,7 +11,7 @@ try:
     del db
     exit()
 except Exception as err:
-    print(err)
+    print(__name__, ": ", err)
     exit()
 
 from dbmysql import *
