@@ -7,6 +7,18 @@ from wrap_api_opf import WrapAPI
 from dbmysql import *
 
 class DB_opf(DBMysql):
+    """
+        Creation of the Mysql database storing part of data from Open Food
+        Facts.
+
+        :param name: Name of the Mysql database.
+        :type name: str
+        :param user: Username for the database 'name'.
+        :type name: str
+        :param pwd: Password used to log in to the user 'user'.
+        :raise: DBException if any of the connection parameters at the base of
+                data is incorrect.
+    """
     def __init__(self, name, user, pwd=None):
         self.db = None
         try:
@@ -24,40 +36,58 @@ class DB_opf(DBMysql):
             self.db.create_table(TABLES)
             self.save_datas_to_db()
 
-
     def save_datas_to_db(self):
-        api_opf = WrapAPI(page_size=20)
+        """ Saves data from Open Food Facts in the Mysql database. """
+        api_opf = WrapAPI(500)
+        fp = None
+        try:
+            # We check the existence of the file 'data_products.bin'.
+            fp = open("data_products.bin")
+            fp.close()
+        except IOError:
+            # If the file 'data_products.bin' does not exist, we download
+            # data from OpenFoodFacts and saves it to this file.
+            api_opf.download_products()
+
+        # Backup of each product registered in 'data_products.bin' in the
+        # Mysql database.
         for datas_product in api_opf.get_all_products():
             name_table = 'category'
             datas = datas_product[name_table]
-            req = "SELECT cat_id FROM openfoodfacts.category WHERE cname={};" \
+            req = 'SELECT cat_id FROM openfoodfacts.category WHERE cname="{}";' \
                   .format(datas['cname'])
 
-            ##########################
-            print(__name__, ": ", req)
-            ##########################
-
-            cat_id = -1
+            cat_id = -1  # Identifier of the product category.
             try:
+                # Retrieving the product category identifier if it exist.
+                # Otherwise we add it to the category table.
                 result = self.db.get_values(req)
                 if result:
-                    cat_id = result['id']
+                    cat_id = result[0]['cat_id']
                 else:
-                    self.insert_into_table(name_table, datas)
+                    self.db.insert_into_table(name_table, datas)
                     cat_id = self.db.lastrowid
             except DBException as err:
-                print(err)
+                print("save_datas_to_db: ", repr(err))
+                print("result: ", result)
+                print("datas: ", datas)
                 exit()
-            except Exception as err:
-                print("erreur indéterminée: ", err)
-                exit()
+            # except Exception as err:
+            #     print("save_datas_to_db: ", repr(err))
+            #     print("result: ", result)
+            #     print("datas: ", datas)
+            #     exit()
 
             name_table = 'product'
             datas = datas_product[name_table]
             datas['cat_id'] = cat_id
-
-            ############################
-            print(__name__, ": ", datas)
-            ############################
-
-            self.db.insert_into_table(name_table, datas)
+            try:
+                self.db.insert_into_table(name_table, datas)
+            except DBException as err:
+                print("save_datas_to_db: ", repr(err))
+                print("datas: ", datas)
+                exit()
+            # except Exception as err:
+            #     print("save_datas_to_db: ", repr(err))
+            #     print("datas: ", datas)
+            #     exit()

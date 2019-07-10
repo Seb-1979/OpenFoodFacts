@@ -8,18 +8,16 @@ try:
     from init_db import *
 
     db = DB_opf(DB_NAME, DB_USER)
-    del db
-    exit()
-except Exception as err:
-    print(__name__, ": ", err)
-    exit()
+    # db.close()
+except DBException as err:
+    print("main: ", repr(err))
 
 from dbmysql import *
 from listselect import *
 from tkinter.messagebox import showerror
 
 
-# dbaccess = DBMysql("opfusr", dbname="openfoodfacts")
+dbaccess = DBMysql("opfusr", dbname="openfoodfacts")
 
 class UI:
     BACKGROUND = 'lightgrey'
@@ -51,10 +49,9 @@ class UI:
         bt_valid.pack(side=RIGHT)
 
     def print_categories(self):
-        # cat = []
-        cat = [str(pow(hash(str(x)), 2)) for x in range(10, 100)]
-        # for v in dbaccess.get_values_into_table("category"):
-        #     cat.append(v[1])
+        cat = []
+        for v in dbaccess.select_from_table("category"):
+            cat.append(v)
         self.__print_list(cat, "Sélectionnez une catégorie :")
         bt_valid = Button(self.frame, text="valider", bd=3, relief=RAISED)
         bt_valid.bind("<Button-1>",
@@ -72,10 +69,8 @@ class UI:
     def __print_list(self, lst, title):
         self.__init_frame()
         self.slist = ListSelect(self.frame, bd=3, relief=RIDGE)
-        i = 1
         for v in lst:
-            self.slist.list_insert("{:d}: {}".format(i, v))
-            i += 1
+            self.slist.list_insert("{:d}: {}".format(v["cat_id"], v["cname"]))
         self.slist.bind("<<Valid>>", self.verify_entry)
         lb = Label(self.frame, text=title, padx=10)
         lb.pack()
@@ -107,7 +102,6 @@ class UI:
 
 
 if __name__ == '__main__':
-    pass
-    # app = UI()
-    # app.print_categories()
-    # app.loop()
+    app = UI()
+    app.print_categories()
+    app.loop()
