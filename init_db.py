@@ -11,13 +11,15 @@ class DB_opf(DBMysql):
         Creation of the Mysql database storing part of data from Open Food
         Facts.
 
-        :param name: Name of the Mysql database.
-        :type name: str
-        :param user: Username for the database 'name'.
-        :type name: str
-        :param pwd: Password used to log in to the user 'user'.
-        :raise: DBException if any of the connection parameters at the base of
+        Args:
+            name (str): Name of the Mysql database.
+            user (str): Username for the database 'name'.
+            pwd (str): Password used to log in to the user 'user'.
+
+        Raises:
+            DBException: If any of the connection parameters at the base of
                 data is incorrect.
+
     """
     def __init__(self, name, user, pwd=None):
         self.db = None
@@ -72,11 +74,6 @@ class DB_opf(DBMysql):
                 print("result: ", result)
                 print("datas: ", datas)
                 exit()
-            # except Exception as err:
-            #     print("save_datas_to_db: ", repr(err))
-            #     print("result: ", result)
-            #     print("datas: ", datas)
-            #     exit()
 
             name_table = 'product'
             datas = datas_product[name_table]
@@ -87,7 +84,3 @@ class DB_opf(DBMysql):
                 print("save_datas_to_db: ", repr(err))
                 print("datas: ", datas)
                 exit()
-            # except Exception as err:
-            #     print("save_datas_to_db: ", repr(err))
-            #     print("datas: ", datas)
-            #     exit()

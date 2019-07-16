@@ -162,47 +162,47 @@ class DBMysql:
 
         return rows
 
-    # def close(self):
-    #     if self.cnx and self.cnx.is_connected():
-    #         self.cursor.close()
-    #         self.cnx.close()
-    #         self.cnx = None
-    #         print("\n>>>Base de données fermée.")
+    def close(self):
+        if self.cnx and self.cnx.is_connected():
+            self.cursor.close()
+            self.cnx.close()
+            print("\n>>>Base de données fermée.")
 
-
-def create_user(dbuser, dbpwd=None):
-    try:
-        print("Création d'un nouvel utilisateur en cours ...\n"
-              "Un nouvel utilisateur doit-être créé pour pouvoir lui associer"
-              " la base de données de Open Food Facts. Veuillez entrer le mot"
-              " de passe de l'utilisateur root sous mysql : ", end='')
-        pwd = getpass("")
-        tmpf = NamedTemporaryFile(mode='w', encoding='utf8')
-        tmpf.file.write(
-            "[client]\n"
-            "user=root\n"
-            "password="+pwd
-        )
-        tmpf.file.flush()
-        del pwd
-        req = "CREATE USER IF NOT EXISTS '{}'@'localhost'{};".format(
-            dbuser, "" if dbpwd is None else " IDENTIFY BY " + dbpwd)
-        req += "GRANT ALL PRIVILEGES ON * . * TO '{}'@'localhost';" \
-               .format(dbuser)
-        req += "FLUSH PRIVILEGES;"
-        ret = process(
-            ["mysql", "--defaults-file={}".format(tmpf.name), "-e", req],
-            stderr=PIPE)
-        tmpf.close()
-    except Exception:
-        if tmpf:
+    @staticmethod
+    def create_user(dbuser, dbpwd=None):
+        try:
+            print("Création d'un nouvel utilisateur en cours ...\n"
+                  "Un nouvel utilisateur doit-être créé pour pouvoir lui"
+                  " associer la base de données de Open Food Facts.\nVeuillez"
+                  " entrer le mot de passe de l'utilisateur root sous"
+                  " mysql : ", end='')
+            pwd = getpass("")
+            tmpf = NamedTemporaryFile(mode='w', encoding='utf8')
+            tmpf.file.write(
+                "[client]\n"
+                "user=root\n"
+                "password="+pwd
+            )
+            tmpf.file.flush()
+            del pwd
+            req = "CREATE USER IF NOT EXISTS '{}'@'localhost'{};".format(
+                dbuser, "" if dbpwd is None else " IDENTIFY BY " + dbpwd)
+            req += "GRANT ALL PRIVILEGES ON * . * TO '{}'@'localhost';" \
+                   .format(dbuser)
+            req += "FLUSH PRIVILEGES;"
+            ret = process(
+                ["mysql", "--defaults-file={}".format(tmpf.name), "-e", req],
+                stderr=PIPE)
             tmpf.close()
-        print("Exception dans fonction :", __name__)
-        return False
-    if ret.returncode:
-        print("Erreur process -> code de retour :", ret.returncode)
-        print(ret.stderr)
-        return False
+        except Exception:
+            if tmpf:
+                tmpf.close()
+            print("Exception dans fonction :", __name__)
+            return False
+        if ret.returncode:
+            print("Erreur process -> code de retour :", ret.returncode)
+            print(ret.stderr)
+            return False
 
-    print("{:5}L'utilisateur a été créé correctement.".format(''))
-    return True
+        print("{:5}L'utilisateur a été créé correctement.".format(''))
+        return True

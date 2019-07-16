@@ -9,8 +9,10 @@ class Progressbar(Timer):
     '''
         Display of a progress bar in the terminal whose maximum is given by
         the time limit for the execution of a function.
-        :param limit_time: Max time of execution of a function in ms.
-        type limit_time: int
+
+        Args:
+            limit_time (int): Max time of execution of a function in ms.
+
     '''
     def __init__(self, limit_time):
         super().__init__(start=False)
@@ -42,7 +44,6 @@ class WrapAPI:
         This class makes it possible to exploit the API written in Python of
         Open Food Facts.
 
-        
     """
     # Equivalence between the fields in the Open Food Facts database and the
     # one used for the application. "product" and "category" are the names of
@@ -102,6 +103,14 @@ class WrapAPI:
             download_products function allows you to download the products from
             the OpenFoodFacts database by saving only the tables and fields
             specified by the DESCRIPTION variable.
+
+            Yields:
+                dict:
+                    Contains two dictionaries named 'product' and 'category'
+                    corresponding to the names of the tables for the database.
+                    Each dictionary has the name of the field and its
+                    associated value in the database.
+
         """
         # progress = Progressbar(5*60*1000)
         progress = Progressbar(60*1000)
@@ -145,6 +154,7 @@ class WrapAPI:
         """
             Returns one by one the products recovered in the OpenFoodFacts
             database.
+
         """
         fp = open("data_products.bin", "rb")
         unpck = Unpickler(fp)
@@ -156,41 +166,6 @@ class WrapAPI:
         except EOFError:  # End of file reached.
             fp.close()
             raise StopIteration
-
-    # def get_all_products(self):
-    #     # progress = Progressbar(5*60*1000)
-    #     progress = Progressbar(60*1000)
-    #
-    #     datas = None
-    #     # with open("data_products.json", "r") as fp:
-    #     #     datas = json.load(fp)
-    #     self.page = 1
-    #     datas = WrapAPI.load_products_from_opf(self.page, page_size=self.page_size)
-    #     while datas:
-    #         for prod in datas:
-    #             p = {'product':{}, 'category':{}}
-    #             for k, v in WrapAPI.DESCRIPTION['product'].items():
-    #                 if k == 'energy':
-    #                     p['product']['energy'] = \
-    #                         int(prod['nutriments']['energy'])
-    #                 elif k in prod.keys():
-    #                     p['product'][v] = "'%s'" % prod[k].replace("'", "\\'")
-    #             k = 'categories'
-    #             v = WrapAPI.DESCRIPTION['category'][k]
-    #             if k in prod.keys():
-    #                 p['category'][v] = "'%s'" % prod[k].replace("'", "\\'")
-    #             try:
-    #                 if p['product']['pname'] and p['category']['cname']:
-    #                     yield p
-    #             except KeyError:
-    #                 pass
-    #
-    #             if not progress():
-    #                 print("\n", progress)
-    #                 raise StopIteration
-    #         self.page += 1
-    #         datas = WrapAPI.load_products_from_opf(self.page,
-    #                                                page_size=self.page_size)
 
 
 if __name__ == '__main__':
