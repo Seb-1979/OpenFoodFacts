@@ -112,13 +112,25 @@ class UI:
                     text="Choisissez parmi les options 1 ou 2 :\n" +
                          "1 - Quel aliment souhaitez-vous remplacer ?\n" +
                          "2 - Retrouver mes aliments substitués.")
+        lb1.pack()
         lb2 = Label(self.frame, text="Votre choix :")
+        lb2.pack()
         choice = Entry(self.frame)
+        choice.pack()
         bt_valid = Button(self.frame, text="Valider", bd=3, relief=RAISED)
         bt_valid.bind("<Button-1>",
-                      lambda evt: self.verify_entry(self.print_categories))
+                      lambda evt: self.menu_event(choice))
         bt_valid.pack(side=RIGHT)
 
+    def menu_event(self, choice):
+        if choice.get() == "1":
+            self.print_categories()
+        elif choice.get() == "2":
+            self.print_favorite_substitute()
+
+    def print_favorite_substitute(self):
+        pass
+		
     def print_categories(self):
         self.__init_frame()
         self.slist = ListSelect(self.frame, bd=3, relief=RIDGE)
@@ -170,12 +182,11 @@ class UI:
         row = 0
         url = None
         for k, v in res.items():
-            Label(self.frame, text=k+": ", anchor="w", bg="#ddd"). \
+            Label(self.frame, text=k+": ", anchor="w"). \
                 grid(row=row, column=0, sticky="nw")
             if k == "url":
                 url = v
-                lb = Label(self.frame, text=url, cursor="hand2", anchor="nw",
-                              bg="#afa")
+                lb = Label(self.frame, text=url, cursor="hand2", anchor="nw")
                 lb.grid(row=row, column=1, sticky="we")
                 lb.bind("<Enter>",
                         lambda ev: lb.configure(font=font.Font(underline=1)))
@@ -183,9 +194,13 @@ class UI:
                         lambda ev: lb.configure(font=font.Font(underline=0)))
                 lb.bind("<Button-1>", lambda ev: wb.open_new(url))
             else:
-                Label(self.frame, text=v, justify="left", anchor="w", bg="#afa",
-                         wraplength=300).grid(row=row, column=1, sticky="we")
+                Label(self.frame, text=v, justify="left", anchor="w",
+                      wraplength=300).grid(row=row, column=1, sticky="we")
             row += 1
+            
+        bt_save = Button(self.frame, text="Enregistrer ce produit",
+                               bd=3, relief=RAISED, command=self.main_menu)
+        bt_save.grid(row=row, column=1, sticky="e")
 
     def verify_entry(self, func, *args):
         fname = func.__name__
@@ -220,6 +235,7 @@ class UI:
 
 if __name__ == '__main__':
     app = UI()
-    app.print_categories()
+#    app.print_categories()
+    app.main_menu()
     app.loop()
     del dbaccess
